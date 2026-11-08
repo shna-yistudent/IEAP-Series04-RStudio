@@ -5,4 +5,61 @@ editor: visual
 aythor: CLANET Damien
 ---
 
-h
+# IEAP-Rstudio-Series04-Assignment
+
+## How does random noise affect linear regression?
+
+## 1) My expectations
+
+I think, the estimated slope and intercept, will become more unstable and will vary more.
+
+And the quality of predictions will get worse, it will be more RMSE errors.
+
+The explained variance will decrease.
+
+And the estimated linear relationships, will be not identical, becayse each data set has different random noise pattern.
+
+## 2) Implement and investigate
+
+To investigate the effect of random noise, we generated three synthetic datasets sharing the exact same underlying linear relationship (y = 2x + 3) and the same range of x values, but subjected to three different levels of Gaussian random noise (sigma = 1, sigma = 5, and sigma = 15). A linear regression model was then fitted to each dataset.
+
+```{r}
+#| label: setup-simulation
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(dplyr)
+
+# 1. Reproducibility and common parameters
+set.seed(42)
+n <- 100
+x <- runif(n, min = 0, max = 10)
+true_intercept <- 3
+true_slope <- 2
+
+# 2. Generate three distinct datasets with increasing noise levels
+dataset_1 <- data.frame(x = x, y = true_intercept + true_slope * x + rnorm(n, 0, 1), Dataset = "1. Low Noise (sd = 1)")
+dataset_2 <- data.frame(x = x, y = true_intercept + true_slope * x + rnorm(n, 0, 5), Dataset = "2. Medium Noise (sd = 5)")
+dataset_3 <- data.frame(x = x, y = true_intercept + true_slope * x + rnorm(n, 0, 15), Dataset = "3. High Noise (sd = 15)")
+
+df_all <- bind_rows(dataset_1, dataset_2, dataset_3)
+
+# 3. Fit separate linear regression models
+model_1 <- lm(y ~ x, data = dataset_1)
+model_2 <- lm(y ~ x, data = dataset_2)
+model_3 <- lm(y ~ x, data = dataset_3)
+
+# 4. Extract numerical indicators for comparison
+summary_table <- data.frame(
+  Dataset = c("Low Noise (sd = 1)", "Medium Noise (sd = 5)", "High Noise (sd = 15)"),
+  Estimated_Intercept = c(coef(model_1)[1], coef(model_2)[1], coef(model_3)[1]),
+  Estimated_Slope = c(coef(model_1)[2], coef(model_2)[2], coef(model_3)[2]),
+  R_Squared = c(summary(model_1)$r.squared, summary(model_2)$r.squared, summary(model_3)$r.squared),
+  Residual_SE = c(summary(model_1)$sigma, summary(model_2)$sigma, summary(model_3)$sigma)
+)
+
+knitr::kable(summary_table, digits = 3, caption = "Comparison of regression models across noise levels")
+```
+
+
