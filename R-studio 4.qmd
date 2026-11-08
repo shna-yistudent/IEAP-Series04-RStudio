@@ -77,7 +77,7 @@ Our initial theoretical expectations were fully confirmed by the numerical simul
 1. **On Parameter Estimation:** Increasing noise does not shift the expected value of the regression line, but it drastically reduces precision and confidence in the estimated coefficients.
 2. **On Predictive Performance:** High noise increases the irreducible error of the model, severely undermining its ability to make accurate point predictions for new observations.
 
-## 4. Propose a better digital experience
+## 4) Propose a better digital experience
 
 To better capture and isolate the theoretical effects of random noise on linear regression, several methodological improvements could be implemented in the experimental protocol:
 
