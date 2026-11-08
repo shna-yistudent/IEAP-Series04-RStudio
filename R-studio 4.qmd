@@ -76,3 +76,11 @@ Our initial theoretical expectations were fully confirmed by the numerical simul
 ### Summary of Noise Impact
 1. **On Parameter Estimation:** Increasing noise does not shift the expected value of the regression line, but it drastically reduces precision and confidence in the estimated coefficients.
 2. **On Predictive Performance:** High noise increases the irreducible error of the model, severely undermining its ability to make accurate point predictions for new observations.
+
+## 4. Propose a better digital experience
+
+To better capture and isolate the theoretical effects of random noise on linear regression, several methodological improvements could be implemented in the experimental protocol:
+
+- **Iterative Monte Carlo Simulation:** Instead of relying on a single static sample of size n = 100 per noise level, we could implement a Monte Carlo loop (repeating the simulation hundreds or thousands of times). This would empirically verify the stability of parameter distributions, confidence interval coverage, and standard error inflation rather than observing a single random draw.
+- **Dynamic Sample Size Variations:** Expanding the protocol to test the interaction between noise levels (sigma) and sample sizes (n) would provide deeper insight. For instance, testing whether a larger sample size (e.g., n = 1000) can effectively compensate for high noise environments (sigma = 15) to recover precise parameter estimates.
+- **Robust Regression Techniques:** Integrating alternative fitting methods (such as robust regression or weighted least squares) alongside Ordinary Least Squares (OLS) would allow us to evaluate how well different algorithms handle outliers or severe variance inflation in high-noise regimes.
