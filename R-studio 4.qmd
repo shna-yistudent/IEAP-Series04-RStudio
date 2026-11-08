@@ -62,4 +62,17 @@ summary_table <- data.frame(
 knitr::kable(summary_table, digits = 3, caption = "Comparison of regression models across noise levels")
 ```
 
+## 3) Conclusions
 
+### Confirmation of Initial Expectations
+Our initial theoretical expectations were fully confirmed by the numerical simulation:
+- **Unbiased Estimators:** The point estimates for the slope and intercept remained close to the true values (beta = 2, alpha = 3) across all noise levels, confirming that ordinary least squares (OLS) estimates remain unbiased under Gaussian noise.
+- **Variance Inflation:** Standard errors and uncertainty surrounding the parameter estimates expanded significantly as noise increased.
+
+### Key Differences Observed Across Models
+- **Goodness of Fit:** The coefficient of determination (R^2) dropped substantially from the low-noise model (near 1.0) to the high-noise model, demonstrating how random variation obscures the underlying relationship despite the sample size.
+- **Residual Error:** The Residual Standard Error (RSE) scaled proportionally with the standard deviation of the injected noise (sigma = 1, 5, and 15), reflecting higher residual dispersion.
+
+### Summary of Noise Impact
+1. **On Parameter Estimation:** Increasing noise does not shift the expected value of the regression line, but it drastically reduces precision and confidence in the estimated coefficients.
+2. **On Predictive Performance:** High noise increases the irreducible error of the model, severely undermining its ability to make accurate point predictions for new observations.
