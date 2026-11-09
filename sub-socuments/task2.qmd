@@ -1,0 +1,687 @@
+# 3.1  Formulate predictions from scientific literature
+
+## 1. What mathematical models have been proposed to describe heart rate recovery?
+
+Several mathematical approaches have been used to describe the decrease in heart rate following exercise.
+
+A. Linear model
+
+\\\[ HR(t)=HR_0-kt \\\]
+
+This model assumes that HR decreases at a constant rate over time.
+
+It is relatively simple and can approximate a short section of recovery, but physiological HR recovery is generally nonlinear.
+
+B. Mono-exponential decay model
+
+\\\[ HR(t)=HR\_{\\mathrm{rest}}+A e\^{-t/\\tau} \\\]
+
+This model describes a rapid initial decrease followed by a progressively slower decline.
+
+A smaller \\(\\tau\\) indicates faster recovery, whereas a larger \\(\\tau\\) indicates slower recovery.
+
+C. Bi-exponential decay model
+
+\\\[ HR(t)=HR\_{\\mathrm{rest}} +A_1e\^{-t/\\tau_1} +A_2e\^{-t/\\tau_2} \\\]
+
+This model includes two exponential components:
+
+It provides greater flexibility when recovery has distinct fast and slow phases.
+
+## 2. What physiological mechanisms explain the decrease in heart rate after exercise?
+
+The decrease in HR after exercise is mainly controlled by the interaction between the parasympathetic and sympathetic branches of the autonomic nervous system (ANS).
+
+A. Parasympathetic reactivation (vagal reactivation)
+
+During exercise, parasympathetic influence on the heart is reduced. When exercise stops, vagal activity rapidly increases, slowing the sinoatrial node and reducing heart rate.
+
+- It is particularly important during the initial rapid phase of recovery.
+
+- It contributes to the rapid decrease in HR during the first seconds to approximately the first minute after exercise.
+
+- Faster vagal reactivation is generally associated with faster early HR recovery.
+
+B. Sympathetic withdrawal
+
+During exercise, sympathetic activity increases to support cardiovascular demand. After exercise, sympathetic stimulation gradually decreases.
+
+- It contributes to the slower, prolonged phase of HR recovery.
+
+- The reduction in circulating catecholamines (such as adrenaline and noradrenaline) also contributes to the decline in heart rate.
+
+- Its influence is particularly relevant after high-intensity exercise.
+
+C. Other physiological mechanisms
+
+Other factors also influence HR recovery:
+
+- Baroreflex: helps regulate blood pressure and heart rate as cardiovascular demand decreases.
+
+- Central command withdrawal: the reduction in central motor drive after exercise contributes to the restoration of parasympathetic activity.
+
+- Muscle reflexes: mechanoreflex and metaboreflex activity changes as muscle movement stops and exercise-related metabolites are cleared.
+
+- Thermoregulation: elevated body temperature can maintain an increased heart rate during recovery.
+
+## 3.What are the expected characteristics of the recovery curve?
+
+The HR recovery curve is generally nonlinear and can be divided into two main phases.
+
+Fast phase (early recovery)
+
+- HR decreases rapidly immediately after exercise cessation.
+
+- It is predominantly associated with parasympathetic reactivation.
+
+- The curve has a steep negative slope.
+
+Slow phase (later recovery)
+
+- HR continues to decrease, but at a progressively slower rate.
+
+- It reflects continued parasympathetic influence and gradual sympathetic withdrawal.
+
+- HR gradually approaches its resting level.
+
+## 4.Does the literature suggest that one mathematical model is sufficient to describe the entire recovery period?
+
+Not necessarily. The suitability of a model depends on the duration and characteristics of the recovery data.
+
+A mono-exponential model can describe many HR recovery curves reasonably well, especially over a relatively short recovery period. However, it may not fully capture the different physiological processes occurring during early and late recovery.
+
+# 3.2. Test your predictions using the datasets
+
+## dataset three-hour cardio recording
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(jsonlite)
+
+# 1. Set data directory
+data_dir <- "../data/cardio_recovery_3h10m"
+
+# 2. Read the three datasets
+pulse <- read_csv(file.path(data_dir, "pulse.csv"))
+acc <- read_csv(file.path(data_dir, "acceleration.csv"))
+rr <- read_csv(file.path(data_dir, "rr.csv"))
+
+# 3. Read metadata
+metadata <- fromJSON(file.path(data_dir, "dataset.json"))
+
+# 4. Inspect the structure
+glimpse(pulse)
+glimpse(acc)
+glimpse(rr)
+
+# 5. Check time ranges
+range(pulse$timestamp)
+range(acc$timestamp)
+range(rr$timestamp)
+
+# 6. Check missing values
+colSums(is.na(pulse))
+colSums(is.na(acc))
+colSums(is.na(rr))
+```
+
+```{r}
+data_dir <- dirname(pulse_file)
+
+pulse <- read_csv(pulse_file)
+
+acc <- read_csv(
+  file.path(data_dir, "acceleration.csv")
+)
+
+rr <- read_csv(
+  file.path(data_dir, "rr.csv")
+)
+
+glimpse(pulse)
+glimpse(acc)
+glimpse(rr)
+```
+
+extract and visualise heart rate over time
+
+```{r}
+# Convert timestamp to minutes
+start_time <- min(pulse$timestamp)
+
+pulse <- pulse %>%
+  mutate(
+    time_min = (timestamp - start_time) / 60000,
+    HR = value
+  )
+
+# Plot heart rate
+ggplot(pulse, aes(x = time_min, y = HR)) +
+  geom_line() +
+  labs(
+    title = "Heart Rate During the 3-hour Recording",
+    x = "Time (minutes)",
+    y = "Heart Rate (bpm)"
+  ) +
+  theme_minimal()
+```
+
+visualise physical activity
+
+```{r}
+# Convert acceleration timestamps
+acc <- acc %>%
+  mutate(
+    time_min = (timestamp - start_time) / 60000
+  )
+
+# Calculate acceleration variability in 10-second windows
+acc_10s <- acc %>%
+  mutate(
+    window = floor((timestamp - start_time) / 10000)
+  ) %>%
+  group_by(window) %>%
+  summarise(
+    time_min = mean(time_min),
+    activity_sd = sqrt(
+      sd(x)^2 + sd(y)^2 + sd(z)^2
+    ),
+    .groups = "drop"
+  )
+
+# Plot acceleration variability
+ggplot(acc_10s, aes(x = time_min, y = activity_sd)) +
+  geom_line() +
+  labs(
+    title = "Acceleration Variability Over Time",
+    x = "Time (minutes)",
+    y = "Acceleration variability (g)"
+  ) +
+  theme_minimal()
+```
+
+generate smooth graphs
+
+```{r}
+# Heart rate: 1-minute median
+pulse_1min <- pulse %>%
+  mutate(minute = floor(time_min)) %>%
+  group_by(minute) %>%
+  summarise(
+    HR_median = median(HR, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Acceleration: 1-minute median
+acc_1min <- acc_10s %>%
+  mutate(minute = floor(time_min)) %>%
+  group_by(minute) %>%
+  summarise(
+    activity_median = median(activity_sd, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r}
+# Smoothed heart rate
+ggplot(pulse_1min, aes(x = minute, y = HR_median)) +
+  geom_line() +
+  labs(
+    title = "Smoothed Heart Rate Over Time",
+    x = "Time (minutes)",
+    y = "Median Heart Rate (bpm)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# Smoothed physical activity
+ggplot(acc_1min, aes(x = minute, y = activity_median)) +
+  geom_line() +
+  labs(
+    title = "Smoothed Acceleration Variability",
+    x = "Time (minutes)",
+    y = "Median Acceleration Variability (g)"
+  ) +
+  theme_minimal()
+```
+
+-  Identify the exercise and recovery periods
+
+  exercise period: 0-60min; transition period: 60-70min, recovery period: 70 mins and after
+
+- Identify the period corresponding to post-exercise recovery
+
+  70-190min
+
+  #### fit and compare models
+  
+```{r}
+# ==========================================
+# 1. Prepare recovery data
+# ==========================================
+
+recovery <- pulse %>%
+  filter(time_min >= 70, time_min <= 190) %>%
+  filter(!is.na(HR), !is.na(time_min)) %>%
+  mutate(t = time_min - 70)
+
+# ==========================================
+# 2. Fit linear model
+# HR(t) = b0 + b1*t
+# ==========================================
+
+model_linear <- lm(HR ~ t, data = recovery)
+
+# ==========================================
+# 3. Fit mono-exponential model
+# HR(t) = HR_inf + A*exp(-k*t)
+# ==========================================
+```
+
+
+```{r}
+model_mono <- nls(
+  HR ~ HR_inf + A * exp(-k * t),
+```
+
+
+```{r}
+data = recovery,
+  start = list(
+    HR_inf = 55,
+    A = 35,
+    k = 0.02
+  ),
+  algorithm = "port",
+  lower = c(HR_inf = 0, A = 0, k = 0.00001),
+  upper = c(HR_inf = 150, A = 150, k = 1),
+  control = nls.control(maxiter = 500, warnOnly = TRUE)
+)
+
+# ==========================================
+# 4. Fit bi-exponential model
+# HR(t) = HR_inf
+#          + A_fast*exp(-k_fast*t)
+#          + A_slow*exp(-k_slow*t)
+#
+# k_fast = k_slow + delta_k
+# This ensures k_fast > k_slow
+# ==========================================
+
+model_bi <- nls(
+  HR ~ HR_inf +
+    A_fast * exp(-(k_slow + delta_k) * t) +
+    A_slow * exp(-k_slow * t),
+  data = recovery,
+  start = list(
+    HR_inf = 55,
+    A_fast = 15,
+    A_slow = 25,
+    k_slow = 0.003,
+    delta_k = 0.04
+  ),
+  algorithm = "port",
+  lower = c(
+    HR_inf = 0,
+    A_fast = 0,
+    A_slow = 0,
+    k_slow = 0.00001,
+    delta_k = 0.00001
+  ),
+  upper = c(
+    HR_inf = 150,
+    A_fast = 150,
+    A_slow = 150,
+    k_slow = 1,
+    delta_k = 1
+  ),
+  control = nls.control(maxiter = 1000, warnOnly = TRUE)
+)
+
+# ==========================================
+# 5. Display model summaries
+# ==========================================
+
+summary(model_linear)
+summary(model_mono)
+summary(model_bi)
+
+```
+  
+```{r}
+model_bi$convInfo
+```
+
+```{r}
+model_mono$convInfo
+```
+```{r}
+coef(model_mono)
+summary(model_mono)
+```
+```{r}
+# Linear model
+summary(model_linear)
+
+# Compare AIC
+AIC(model_linear, model_mono)
+
+# Compare RMSE
+rmse_linear <- sqrt(mean(residuals(model_linear)^2))
+rmse_mono <- sqrt(mean(residuals(model_mono)^2))
+
+rmse_linear
+rmse_mono
+```
+residual analysis
+```{r}
+# Calculate residuals
+recovery$res_linear <- residuals(model_linear)
+recovery$res_mono <- residuals(model_mono)
+
+# Linear model residual plot
+ggplot(recovery, aes(x = t, y = res_linear)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Residuals - Linear Model (Dataset 1)",
+    x = "Time since recovery began (min)",
+    y = "Residuals (bpm)"
+  ) +
+  theme_minimal()
+
+# Mono-exponential residual plot
+ggplot(recovery, aes(x = t, y = res_mono)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Residuals - Mono-exponential Model (Dataset 1)",
+    x = "Time since recovery began (min)",
+    y = "Residuals (bpm)"
+  ) +
+  theme_minimal()
+```
+
+
+The mono-exponential model successfully converged, and the bi-exponential model failed to converge. The mono-exponential model achieved a slightly lower AIC (10483.72) than the linear model (10486.21), with a difference of 2.49. This suggests a modest improvement in model fit after accounting for model complexity.
+
+## dataset 7m30s cardio recording
+
+```{r}
+# Define the data directory
+data_dir <- "D:/IEAP/R-python-Github/series04/IEAP-Series04-RStudio/data/datasets_2026-09-27_cardio_recovery_7m30s"
+
+# Read the three datasets
+pulse <- read_csv(file.path(data_dir, "pulse.csv"))
+acc <- read_csv(file.path(data_dir, "acceleration.csv"))
+rr <- read_csv(file.path(data_dir, "rr.csv"))
+
+# Inspect data
+glimpse(pulse)
+glimpse(acc)
+glimpse(rr)
+```
+```{r}
+# Define the starting time
+start_time <- min(pulse$timestamp, na.rm = TRUE)
+
+# Convert timestamps into minutes
+pulse <- pulse %>%
+  mutate(
+    time_min = (timestamp - start_time) / 60000,
+    HR = value
+  )
+
+acc <- acc %>%
+  mutate(
+    time_min = (timestamp - start_time) / 60000
+  )
+
+# Plot raw heart rate over time
+ggplot(pulse, aes(x = time_min, y = HR)) +
+  geom_line() +
+  labs(
+    title = "Heart Rate During the 7.5-minute Recording",
+    x = "Time (min)",
+    y = "Heart Rate (bpm)"
+  ) +
+theme_minimal()
+```
+```{r}
+acc_10s <- acc %>%
+  mutate(
+    window = floor((timestamp - start_time) / 10000)
+  ) %>%
+  group_by(window) %>%
+  summarise(
+    time_min = mean(time_min),
+    activity_sd = sqrt(
+      sd(x, na.rm = TRUE)^2 +
+      sd(y, na.rm = TRUE)^2 +
+      sd(z, na.rm = TRUE)^2
+    ),
+    .groups = "drop"
+  )
+```
+
+```{r}
+acc_1min <- acc_10s %>%
+  mutate(minute = floor(time_min)) %>%
+  group_by(minute) %>%
+  summarise(
+    activity_median = median(activity_sd, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+
+```{r}
+acc_10s <- acc %>%
+  mutate(
+    window = floor((timestamp - start_time) / 10000)
+  ) %>%
+  group_by(window) %>%
+  summarise(
+    time_min = mean(time_min),
+    activity_sd = sqrt(
+      sd(x, na.rm = TRUE)^2 +
+      sd(y, na.rm = TRUE)^2 +
+      sd(z, na.rm = TRUE)^2
+    ),
+    .groups = "drop"
+  )
+```
+```{r}
+ggplot(acc_10s, aes(x = time_min, y = activity_sd)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Acceleration Variability (30-second windows)",
+    x = "Time (min)",
+    y = "Acceleration Variability (g)"
+  ) +
+  theme_minimal()
+```
+
+ Identify the exercise and recovery periods
+
+  exercise period: 0-2min; transition period: 2-4min, recovery period: 4 mins and after
+
+- Identify the period corresponding to post-exercise recovery
+
+  4-7.5min
+  
+   #### fit and compare models
+   
+```{r}
+# Define recovery period
+t0 <- 2
+
+recovery <- pulse %>%
+  filter(time_min >= t0) %>%
+  filter(!is.na(HR), !is.na(time_min)) %>%
+  mutate(
+    t = time_min - t0
+  )
+
+# Check recovery data
+summary(recovery$HR)
+nrow(recovery)
+```
+fit linear model
+```{r}
+model_linear <- lm(
+  HR ~ t,
+  data = recovery
+)
+```
+fit Mono-exponential model
+```{r}
+model_mono <- nls(
+  HR ~ HR_inf + A * exp(-k * t),
+  data = recovery,
+  start = list(
+    HR_inf = 60,
+    A = 40,
+    k = 0.1
+  ),
+  algorithm = "port",
+  lower = c(
+    HR_inf = 0,
+    A = 0,
+    k = 0.00001
+  ),
+  upper = c(
+    HR_inf = 200,
+    A = 200,
+    k = 5
+  ),
+  control = nls.control(
+    maxiter = 500,
+    warnOnly = TRUE
+  )
+)
+
+```
+fit Bi-exponential model
+```{r}
+model_bi <- nls(
+  HR ~ HR_inf +
+    A_fast * exp(-(k_slow + delta_k) * t) +
+    A_slow * exp(-k_slow * t),
+  data = recovery,
+  start = list(
+    HR_inf = 60,
+    A_fast = 15,
+    A_slow = 25,
+    k_slow = 0.03,
+    delta_k = 0.2
+  ),
+  algorithm = "port",
+  lower = c(
+    HR_inf = 0,
+    A_fast = 0,
+    A_slow = 0,
+    k_slow = 0.00001,
+    delta_k = 0.00001
+  ),
+  upper = c(
+    HR_inf = 200,
+    A_fast = 200,
+    A_slow = 200,
+    k_slow = 5,
+    delta_k = 5
+  ),
+  control = nls.control(
+    maxiter = 1000,
+    warnOnly = TRUE
+  )
+)
+```
+```{r}
+model_bi$convInfo
+coef(model_bi)
+```
+comparision
+```{r}
+rmse <- function(actual, predicted) {
+  sqrt(mean((actual - predicted)^2))
+}
+
+comparison <- data.frame(
+  Model = c("Linear", "Mono-exponential", "Bi-exponential"),
+
+  R2 = c(
+    summary(model_linear)$r.squared,
+    1 - sum(resid(model_mono)^2) /
+      sum((recovery$HR - mean(recovery$HR))^2),
+    1 - sum(resid(model_bi)^2) /
+      sum((recovery$HR - mean(recovery$HR))^2)
+  ),
+
+  RMSE = c(
+    rmse(recovery$HR, predict(model_linear)),
+    rmse(recovery$HR, predict(model_mono)),
+    rmse(recovery$HR, predict(model_bi))
+  ),
+
+  AIC = c(
+    AIC(model_linear),
+    AIC(model_mono),
+    AIC(model_bi)
+  )
+)
+
+comparison
+```
+residual analysis
+```{r}
+# Calculate residuals
+recovery$res_linear <- residuals(model_linear)
+recovery$res_mono <- residuals(model_mono)
+recovery$res_bi <- residuals(model_bi)
+```
+
+```{r}
+library(ggplot2)
+
+# Linear model
+p1 <- ggplot(recovery, aes(x = t, y = res_linear)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Residuals - Linear Model",
+    x = "Time since recovery began (min)",
+    y = "Residuals (bpm)"
+  ) +
+  theme_minimal()
+
+# Mono-exponential model
+p2 <- ggplot(recovery, aes(x = t, y = res_mono)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Residuals - Mono-exponential Model",
+    x = "Time since recovery began (min)",
+    y = "Residuals (bpm)"
+  ) +
+  theme_minimal()
+
+# Bi-exponential model
+p3 <- ggplot(recovery, aes(x = t, y = res_bi)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Residuals - Bi-exponential Model",
+    x = "Time since recovery began (min)",
+    y = "Residuals (bpm)"
+  ) +
+  theme_minimal()
+
+p1
+p2
+p3
+```
+
