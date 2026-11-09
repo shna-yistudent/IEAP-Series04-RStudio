@@ -1,0 +1,41 @@
+---
+title: "IEAP Series 04"
+author: "YIN Shunan   CLANET Damien   NASIR Shakir "
+date: "2026-11-09"
+format: html
+bibliography: references.bib
+csl: apa.csl
+nocite: '@*'
+---
+
+github link: https://github.com/shna-yistudent/IEAP-Series04-RStudio
+
+
+##  How does random noise affect linear regression?
+{{< include sub-documents/task1.qmd >}}
+
+## Finding a mathematical model for heart rate recovery after exercise （formulate and test）
+{{< include sub-documents/task2.qmd >}}
+
+## Finding a mathematical model for heart rate recovery after exercise （conclusion）
+{{< include sub-documents/task3.qmd >}}
+
+
+#an analysis of your team’s workflow strategy using Git
+## Analysis of the Team Workflow Strategy Using Git
+
+Our team used Git and GitHub to organize the project and facilitate collaboration. Each team member worked on an individual branch, allowing us to develop different sections independently without directly modifying the main branch. We divided the work into separate Quarto documents， as we have divided the whole work into 3 parts:
+task1: the solution to problem 1 how does random nois affect linear regression,solved by CLANET Damien
+task2: the fit and compare of 2 datasets, finished by YIN Shunan 
+task 3: the cinclusion was drawn by NASIR Shakir
+
+This strategy helped us avoid unnecessary interference between team members and made the project structure easier to manage. 
+
+We have cooperated and assigned our tasks quickly and effectively, and the communication between how to work in separated notebooks is fluent as well.
+
+Overall, using Git improved collaboration, traceability, and version control. This experience highlighted the importance of making regular commits, communicating before modifying shared files, and updating individual branches with the latest version of the main branch.
+
+
+
+
+# Bibliography
