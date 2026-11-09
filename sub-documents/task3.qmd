@@ -1,0 +1,299 @@
+---
+title: "Finding a Mathematical Model for Heart Rate Recovery After Exercise"
+author: "SHAKIR NASIR"
+date: today
+format:
+  html:
+    toc: true
+  pdf:
+    geometry: margin=1.5cm
+---
+
+# Introduction
+
+The aim of this analysis was to identify an appropriate mathematical model to describe how heart rate decreases during recovery after exercise. Three different models were tested using the physiological recording:
+
+1.  A linear model
+2.  A mono-exponential decay model
+3.  A bi-exponential decay model
+
+The models were compared using R-squared, RMSE, AIC, and residual analysis.
+
+# Data preparation
+
+The pulse dataset was loaded and inspected. The timestamp variable was converted into seconds from the beginning of the recording to make the time variable easier to interpret.
+
+# Load required package
+
+library(tidyverse)
+
+# Check current working directory
+
+getwd()
+
+# Load the pulse data
+
+pulse_data \<- read_csv("data/pulse.csv")
+
+# Display the first few rows
+
+head(pulse_data)
+
+# Check the column names
+
+names(pulse_data)
+
+# Check the structure of the dataset
+
+str(pulse_data)
+
+# Get a summary of the data
+
+summary(pulse_data)
+
+# Convert timestamp to time in seconds from the start of the recording
+
+pulse_data \<- pulse_data %\>% mutate( time_seconds = (timestamp - first(timestamp)) / 1000 )
+
+# Display the first few rows with the new time variable
+
+head(pulse_data)
+
+# Check the duration of the recording
+
+summary(pulse_data\$time_seconds)
+
+# Plot heart rate (pulse) over time
+
+ggplot(pulse_data, aes(x = time_seconds, y = value)) + geom_point() + geom_line() + labs( title = "Heart Rate During the Recording", x = "Time (seconds)", y = "Heart Rate (bpm)" ) + theme_minimal()
+
+## Initial observation
+
+The graph shows that heart rate decreases rapidly at the beginning of the recovery period. After this initial decrease, the decline becomes slower and approaches a more stable level. This suggests that the relationship between heart rate and time may not be adequately described by a simple linear model.
+
+# Linear model
+
+A linear regression model was first fitted to determine whether heart rate decreased at a constant rate over time.
+
+# Fit a linear model to heart rate recovery
+
+linear_model \<- lm(value \~ time_seconds, data = pulse_data)
+
+# Display the model results
+
+summary(linear_model)
+
+# Save predicted values
+
+pulse_data \<- pulse_data %\>% mutate( linear_prediction = predict(linear_model) )
+
+# Plot observed heart rate and linear model
+
+ggplot(pulse_data, aes(x = time_seconds, y = value)) + geom_point() + geom_line() + geom_line( aes(y = linear_prediction), linewidth = 1 ) + labs( title = "Linear Model of Heart Rate Recovery", x = "Time (seconds)", y = "Heart Rate (bpm)" ) + theme_minimal()
+
+## Interpretation
+
+The linear model describes a general decrease in heart rate over time. However, heart rate recovery is not constant throughout the recording. The decrease is faster at the beginning and slower later in the recovery period. Therefore, a linear model may be too simple to describe the physiological recovery process.
+
+# Mono-exponential model of heart rate recovery
+
+# HR(t) = C + A \* exp(-k \* t)
+
+mono_model \<- nls( value \~ C + A \* exp(-k \* time_seconds), data = pulse_data, start = list( C = min(pulse_data$value),
+    A = max(pulse_data$value) - min(pulse_data\$value), k = 0.01 ) )
+
+# Display the model results
+
+summary(mono_model)
+
+# Add mono-exponential predictions to the dataset
+
+pulse_data \<- pulse_data %\>% mutate( mono_prediction = predict(mono_model) )
+
+# Plot observed heart rate and mono-exponential model
+
+ggplot(pulse_data, aes(x = time_seconds, y = value)) + geom_point() + geom_line() + geom_line( aes(y = mono_prediction), linewidth = 1 ) + labs( title = "Mono-exponential Model of Heart Rate Recovery", x = "Time (seconds)", y = "Heart Rate (bpm)" ) + theme_minimal()
+
+## Interpretation
+
+The mono-exponential model fitted the data better than the linear model. It was able to represent the rapid initial decrease in heart rate and the slower recovery phase observed later. However, the residual analysis suggested that some structure remained unexplained.
+
+\# ----------------------------- \# Compare Linear and Mono-exponential Models \# -----------------------------
+
+# Linear model predictions
+
+linear_pred \<- predict(linear_model)
+
+# Mono-exponential model predictions
+
+mono_pred \<- predict(mono_model)
+
+# Calculate R-squared manually for both models
+
+r2_linear \<- 1 - sum((pulse_data$value - linear_pred)^2) /
+  sum((pulse_data$value - mean(pulse_data\$value))\^2)
+
+r2_mono \<- 1 - sum((pulse_data$value - mono_pred)^2) /
+  sum((pulse_data$value - mean(pulse_data\$value))\^2)
+
+# Calculate RMSE for both models
+
+rmse_linear \<- sqrt(mean((pulse_data\$value - linear_pred)\^2))
+
+rmse_mono \<- sqrt(mean((pulse_data\$value - mono_pred)\^2))
+
+# Compare the models
+
+model_comparison \<- data.frame( Model = c("Linear", "Mono-exponential"), R_squared = c(r2_linear, r2_mono), RMSE = c(rmse_linear, rmse_mono), AIC = c(AIC(linear_model), AIC(mono_model)) )
+
+# Display the comparison table
+
+model_comparison
+
+# -----------------------------
+
+# Residual Analysis
+
+# -----------------------------
+
+# Calculate residuals for both models
+
+pulse_data \<- pulse_data %\>% mutate( linear_residuals = value - linear_prediction, mono_residuals = value - mono_prediction )
+
+# Plot residuals for the linear model
+
+ggplot(pulse_data, aes(x = time_seconds, y = linear_residuals)) + geom_point() + geom_hline(yintercept = 0, linetype = "dashed") + labs( title = "Residuals of the Linear Model", x = "Time (seconds)", y = "Residuals (bpm)" ) + theme_minimal()
+
+# Plot residuals for the mono-exponential model
+
+ggplot(pulse_data, aes(x = time_seconds, y = mono_residuals)) + geom_point() + geom_hline(yintercept = 0, linetype = "dashed") + labs( title = "Residuals of the Mono-exponential Model", x = "Time (seconds)", y = "Residuals (bpm)" ) + theme_minimal()
+
+\# ----------------------------- \# Residual diagnostics \# -----------------------------
+
+# Summary of residuals
+
+summary(pulse_data$linear_residuals)
+summary(pulse_data$mono_residuals)
+
+# Standard deviation of residuals
+
+sd(pulse_data$linear_residuals)
+sd(pulse_data$mono_residuals)
+
+# Shapiro-Wilk test for normality of mono-exponential residuals
+
+shapiro.test(pulse_data\$mono_residuals)
+
+# -----------------------------
+
+# Check autocorrelation of residuals
+
+# -----------------------------
+
+# Durbin-Watson test for the linear model
+
+library(lmtest)
+
+dwtest(linear_model)
+
+# Plot autocorrelation of mono-exponential residuals
+
+acf( pulse_data\$mono_residuals, main = "Autocorrelation of Mono-exponential Model Residuals" )
+
+# -----------------------------
+
+# Bi-exponential model
+
+# -----------------------------
+
+bi_model \<- nls( value \~ C + A1 \* exp(-k1 \* time_seconds) + A2 \* exp(-k2 \* time_seconds),
+
+data = pulse_data,
+
+start = list( C = 123, A1 = 20, k1 = 0.02, A2 = 12, k2 = 0.001 ),
+
+algorithm = "port",
+
+lower = c( C = 100, A1 = 0, k1 = 0.0001, A2 = 0, k2 = 0.0001 ),
+
+upper = c( C = 140, A1 = 100, k1 = 1, A2 = 100, k2 = 1 ),
+
+control = nls.control(maxiter = 1000) )
+
+# Display the model results
+
+summary(bi_model)
+
+# Add bi-exponential predictions to the dataset
+
+pulse_data \<- pulse_data %\>% mutate( bi_prediction = predict(bi_model) )
+
+# Plot observed heart rate and bi-exponential model
+
+ggplot(pulse_data, aes(x = time_seconds, y = value)) + geom_point() + geom_line() + geom_line( aes(y = bi_prediction), linewidth = 1 ) + labs( title = "Bi-exponential Model of Heart Rate Recovery", x = "Time (seconds)", y = "Heart Rate (bpm)" ) + theme_minimal()
+
+# -----------------------------
+
+# Final comparison of all models
+
+# -----------------------------
+
+# Bi-exponential predictions
+
+bi_pred \<- predict(bi_model)
+
+# Calculate R-squared for the bi-exponential model
+
+r2_bi \<- 1 - sum((pulse_data$value - bi_pred)^2) /
+  sum((pulse_data$value - mean(pulse_data\$value))\^2)
+
+# Calculate RMSE for the bi-exponential model
+
+rmse_bi \<- sqrt(mean((pulse_data\$value - bi_pred)\^2))
+
+# Create a final comparison table
+
+final_comparison \<- data.frame( Model = c("Linear", "Mono-exponential", "Bi-exponential"), R_squared = c(r2_linear, r2_mono, r2_bi), RMSE = c(rmse_linear, rmse_mono, rmse_bi), AIC = c( AIC(linear_model), AIC(mono_model), AIC(bi_model) ) )
+
+# Display the final comparison table
+
+final_comparison
+
+# Model comparison
+
+The three models were compared using R-squared, RMSE, and AIC.
+
+| Model            | R-squared |  RMSE |     AIC |
+|------------------|----------:|------:|--------:|
+| Linear           |     0.580 | 4.697 | 545.772 |
+| Mono-exponential |     0.797 | 3.266 | 481.683 |
+| Bi-exponential   |     0.815 | 3.122 | 477.428 |
+
+The bi-exponential model showed the highest R-squared value (0.815), indicating that it explained the largest proportion of variability in heart rate. It also had the lowest RMSE (3.122), meaning that its predictions were closest to the observed values.
+
+Furthermore, the bi-exponential model had the lowest AIC (477.428). Therefore, considering goodness of fit and model complexity, the bi-exponential model was selected as the best model among the three models tested.
+
+# Residual analysis
+
+Residuals were examined to evaluate the adequacy of the fitted models. The residuals of the mono-exponential model were distributed around zero, although some structure remained visible.
+
+The Shapiro-Wilk test for the mono-exponential residuals produced:
+
+- W = 0.974
+- p = 0.070
+
+Since the p-value was greater than 0.05, there was no strong evidence against normality of the residuals.
+
+However, the autocorrelation plot showed that successive residuals were not completely independent. This indicates that the time-series structure of the data should be considered when interpreting the results.
+
+# Conclusion
+
+The aim of this study was to identify an appropriate mathematical model for heart rate recovery after exercise.
+
+The results showed that heart rate recovery was not adequately described by a simple linear relationship. The heart rate decreased rapidly at the beginning of the recording and then decreased more slowly over time.
+
+The mono-exponential model improved the fit substantially compared with the linear model. However, the bi-exponential model provided the best overall performance.
+
+The bi-exponential model had the highest R-squared value (0.815), the lowest RMSE (3.122), and the lowest AIC (477.428). Therefore, among the models tested, the bi-exponential model was selected as the most appropriate model for describing the observed heart rate recovery data.
+
+One limitation of this analysis is that the data showed temporal autocorrelation, meaning that consecutive measurements were not completely independent. Future analyses could investigate additional time-series methods or use more recordings to evaluate whether the same model is consistently appropriate across different individuals and exercise conditions.
